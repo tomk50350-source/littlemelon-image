@@ -21,24 +21,30 @@ export function InteractiveGallery({
   items,
   compact = false,
   initialFilter = "创意灵感",
-  loadMore = false
+  loadMore = false,
+  initialSeed,
+  initialHasMore
 }: {
   items: GalleryItem[];
   compact?: boolean;
   initialFilter?: string;
   loadMore?: boolean;
+  initialSeed?: number;
+  initialHasMore?: boolean;
 }) {
   const [active, setActive] = useState(initialFilter);
   const [visibleItems, setVisibleItems] = useState(items);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
-  const [hasMore, setHasMore] = useState(loadMore);
+  const [hasMore, setHasMore] = useState(initialHasMore ?? loadMore);
+  const [seed, setSeed] = useState(initialSeed ?? Date.now());
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setVisibleItems(items);
-    setHasMore(loadMore);
-  }, [items, loadMore]);
+    setHasMore(initialHasMore ?? loadMore);
+    if (initialSeed) setSeed(initialSeed);
+  }, [initialHasMore, initialSeed, items, loadMore]);
 
   const filtered = useMemo(() => {
     if (active === "全部") return visibleItems;
@@ -56,8 +62,10 @@ export function InteractiveGallery({
     setActive(tag);
     if (!loadMore) return;
     setLoadingMore(true);
+    const nextSeed = Date.now();
+    setSeed(nextSeed);
     try {
-      const response = await fetch(`/api/gallery?filter=${encodeURIComponent(tag)}&take=60`, { cache: "no-store" });
+      const response = await fetch(`/api/gallery?filter=${encodeURIComponent(tag)}&take=60&seed=${nextSeed}`, { cache: "no-store" });
       const data = await response.json();
       setVisibleItems(data.items ?? []);
       setHasMore(Boolean(data.hasMore));
@@ -71,7 +79,7 @@ export function InteractiveGallery({
     setLoadingMore(true);
     try {
       const response = await fetch(
-        `/api/gallery?filter=${encodeURIComponent(active)}&skip=${visibleItems.length}&take=60`,
+        `/api/gallery?filter=${encodeURIComponent(active)}&skip=${visibleItems.length}&take=60&seed=${seed}`,
         { cache: "no-store" }
       );
       const data = await response.json();
@@ -80,7 +88,7 @@ export function InteractiveGallery({
     } finally {
       setLoadingMore(false);
     }
-  }, [active, hasMore, loadMore, loadingMore, visibleItems.length]);
+  }, [active, hasMore, loadMore, loadingMore, seed, visibleItems.length]);
 
   useEffect(() => {
     if (!loadMore || !sentinelRef.current) return;

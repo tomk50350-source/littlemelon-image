@@ -1,20 +1,16 @@
 import { Header } from "@/components/Header";
 import { InteractiveGallery } from "@/components/InteractiveGallery";
-import { prisma } from "@/lib/prisma";
+import { GALLERY_PAGE_SIZE, galleryBaseWhere, getRotatingGalleryItems } from "@/lib/gallery";
 
 export default async function GalleryPage() {
-  const items = await prisma.promptGallery.findMany({
+  const seed = Date.now();
+  const { items, total } = await getRotatingGalleryItems({
     where: {
-      id: { startsWith: "github-" },
+      ...galleryBaseWhere,
       category: "创意灵感",
-      NOT: [
-        { prompt: { contains: "围绕这个画面方向" } },
-        { title: { contains: "Claude Code" } },
-        { title: { contains: "插件" } }
-      ]
     },
-    orderBy: [{ updatedAt: "desc" }],
-    take: 60
+    take: GALLERY_PAGE_SIZE,
+    seed
   });
 
   return (
@@ -28,7 +24,7 @@ export default async function GalleryPage() {
               <p className="muted">默认展示同步库里的创意案例，用户可再切换查看电商产品图、AI 修图和专利制图标准。</p>
             </div>
           </div>
-          <InteractiveGallery items={items} initialFilter="创意灵感" loadMore />
+          <InteractiveGallery items={items} initialFilter="创意灵感" loadMore initialSeed={seed} initialHasMore={total > items.length} />
         </div>
       </main>
     </div>
