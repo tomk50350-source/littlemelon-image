@@ -90,7 +90,6 @@ export default async function AdminPage() {
                   smtpUser: settings.smtpUser || "",
                   smtpFrom: settings.smtpFrom || "",
                   hasSmtpPassword: settings.hasSmtpPassword,
-                  wechatQr: settings.wechatQr || "",
                   alipayQr: settings.alipayQr || "",
                   alipayAppId: settings.alipayAppId || "",
                   alipayPublicKey: settings.alipayPublicKey || "",
@@ -131,7 +130,7 @@ export default async function AdminPage() {
                         <div>
                           <strong>{payment.user.email}</strong>
                           <span>
-                            {payment.provider === "wechat" ? "微信" : payment.provider === "alipay" ? "支付宝" : "测试"} · ¥
+                            {payment.provider === "alipay" ? "支付宝" : "测试"} · ¥
                             {(payment.amountCents / 100).toFixed(1)} · {String(payment.credits)} 积分
                           </span>
                           <small>订单号：{payment.id}</small>

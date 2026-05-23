@@ -19,6 +19,6 @@ export const generationSchema = z.object({
 });
 
 export const paymentSchema = z.object({
-  provider: z.enum(["wechat", "alipay", "mock"]).default("mock"),
+  provider: z.enum(["alipay", "mock"]).default("alipay"),
   planId: z.enum(["plus-990", "pro-9900", "payg-1k-50", "payg-2k-100", "payg-4k-200"]).default("plus-990")
 });

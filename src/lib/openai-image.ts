@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { IMAGE_SIZES, type ImageSizeLabel } from "./constants";
 import { getImageProviderSettings } from "./settings";
 
@@ -7,6 +10,12 @@ type GenerateImageInput = {
   sizeLabel: ImageSizeLabel;
   mode: "text" | "reference" | "edit";
   referenceImages?: string[];
+};
+
+type GeneratedImageResult = {
+  imageUrl: string;
+  originalUrl: string;
+  provider: string;
 };
 
 type ImageApiResponse = {
@@ -21,13 +30,28 @@ type ImageApiResponse = {
   };
 };
 
+export class ImageProviderError extends Error {
+  constructor(
+    message: string,
+    public readonly details?: {
+      status?: number;
+      endpoint?: string;
+      causeCode?: string;
+      causeMessage?: string;
+    }
+  ) {
+    super(message);
+    this.name = "ImageProviderError";
+  }
+}
+
 const sampleImages: Record<ImageSizeLabel, string> = {
   "1K": "https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1024&auto=format&fit=crop",
   "2K": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop",
   "4K": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1800&auto=format&fit=crop"
 };
 
-export async function generateImage(input: GenerateImageInput) {
+export async function generateImage(input: GenerateImageInput): Promise<GeneratedImageResult> {
   const settings = await getImageProviderSettings();
   if (!settings.apiKey) {
     return {
@@ -74,14 +98,19 @@ export async function generateImage(input: GenerateImageInput) {
   }
 
   if (b64) {
-    return {
-      imageUrl: `data:image/png;base64,${b64}`,
-      originalUrl: `data:image/png;base64,${b64}`,
-      provider: "openai"
-    };
+    const imageUrl = await saveBase64Image(b64);
+    return { imageUrl, originalUrl: imageUrl, provider: "openai" };
   }
 
   throw new Error("OpenAI 没有返回图片结果");
+}
+
+async function saveBase64Image(b64: string) {
+  const outputDir = path.join(process.cwd(), "public", "generated");
+  await mkdir(outputDir, { recursive: true });
+  const filename = `${new Date().toISOString().slice(0, 10)}-${randomUUID()}.png`;
+  await writeFile(path.join(outputDir, filename), Buffer.from(b64, "base64"));
+  return `/generated/${filename}`;
 }
 
 function normalizeOpenAIBaseUrl(baseUrl?: string) {
@@ -105,7 +134,8 @@ async function requestImageGenerations({
   baseUrl: string;
   body: Record<string, string | undefined>;
 }) {
-  const response = await fetch(`${baseUrl}/images/generations`, {
+  const endpoint = `${baseUrl}/images/generations`;
+  const response = await safeFetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -145,7 +175,7 @@ async function requestImageEdits({
     form.append("image[]", blob, `reference-${index + 1}.${extension}`);
   });
 
-  const response = await fetch(`${baseUrl}/images/edits`, {
+  const response = await safeFetch(`${baseUrl}/images/edits`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`
@@ -156,17 +186,44 @@ async function requestImageEdits({
   return parseImageResponse(response, "images/edits");
 }
 
+async function safeFetch(url: string, init: RequestInit) {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    const cause = getErrorCause(error);
+    throw new ImageProviderError(
+      `无法连接图片接口：${url}。请检查中转地址、服务器网络和 API Key。${cause.causeMessage ? `底层错误：${cause.causeMessage}` : ""}`,
+      {
+        endpoint: url,
+        causeCode: cause.causeCode,
+        causeMessage: cause.causeMessage
+      }
+    );
+  }
+}
+
 async function parseImageResponse(response: Response, endpoint: string): Promise<ImageApiResponse> {
   const text = await response.text();
   const data = parseJson(text);
 
   if (!response.ok) {
     const message = data?.error?.message || data?.error?.code || text || response.statusText;
-    throw new Error(`OpenAI ${endpoint} API error (${response.status}): ${message}`);
+    throw new ImageProviderError(`图片接口返回错误 (${response.status})：${message}`, {
+      status: response.status,
+      endpoint
+    });
   }
 
   if (!data) throw new Error(`OpenAI ${endpoint} 没有返回 JSON`);
   return data;
+}
+
+function getErrorCause(error: unknown) {
+  const cause = error instanceof Error ? (error.cause as NodeJS.ErrnoException | undefined) : undefined;
+  return {
+    causeCode: cause?.code,
+    causeMessage: cause?.message || (error instanceof Error ? error.message : "")
+  };
 }
 
 function parseJson(text: string): ImageApiResponse | null {

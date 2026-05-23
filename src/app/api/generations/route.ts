@@ -11,10 +11,8 @@ import {
   getUserTier,
   refundCredits
 } from "@/lib/credits";
-import { runWithGenerationLimit } from "@/lib/generation-queue";
-import { generateImage } from "@/lib/openai-image";
+import { ImageProviderError, generateImage } from "@/lib/openai-image";
 import { prisma } from "@/lib/prisma";
-import { getImageProviderSettings } from "@/lib/settings";
 import { generationSchema } from "@/lib/validators";
 
 export async function GET() {
@@ -110,12 +108,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const settings = await getImageProviderSettings();
     const results = [];
     for (let index = 0; index < quantity; index += 1) {
-      const result = await runWithGenerationLimit(settings.maxConcurrentGenerations, () =>
-        generateImage({ prompt, scenario, mode, sizeLabel, referenceImages })
-      );
+      const result = await generateImage({ prompt, scenario, mode, sizeLabel, referenceImages });
       results.push(result);
     }
     const primary = results[0];
@@ -150,6 +145,12 @@ export async function POST(request: Request) {
 
 function normalizeGenerationError(error: unknown) {
   const raw = error instanceof Error ? error.message : "生成失败，请稍后再试";
+  if (error instanceof ImageProviderError) {
+    return error.message;
+  }
+  if (/fetch failed/i.test(raw)) {
+    return "无法连接图片接口。请在后台确认中转地址填写为 https://api.littlemelon.top，API Key 有效，并检查服务器网络。";
+  }
   if (/403|blocked|request was blocked/i.test(raw)) {
     return "生成请求被上游接口拦截了。请换一个更安全/更具体的提示词，或稍后重试；本次失败不会扣积分。";
   }

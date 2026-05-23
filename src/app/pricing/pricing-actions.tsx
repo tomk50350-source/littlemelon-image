@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 type CheckoutState = {
   paymentId: string;
-  provider: "wechat" | "alipay" | "mock";
+  provider: "alipay" | "mock";
   checkoutUrl?: string;
   qrImage?: string;
   qrText?: string;
@@ -35,7 +35,7 @@ export function PricingActions({
   const [message, setMessage] = useState("");
   const [checkout, setCheckout] = useState<CheckoutState | null>(null);
 
-  async function buy(provider: "wechat" | "alipay") {
+  async function buy() {
     setLoading(true);
     setMessage("");
     setCheckout(null);
@@ -43,7 +43,7 @@ export function PricingActions({
       const response = await fetch("/api/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, planId })
+        body: JSON.stringify({ provider: "alipay", planId })
       });
       const data = await response.json();
       if (!response.ok) {
@@ -83,18 +83,15 @@ export function PricingActions({
           ))}
         </select>
       ) : null}
-      <button className="button button-primary" onClick={() => buy("wechat")} disabled={loading}>
-        {loading ? <Loader2 size={16} /> : <CreditCard size={16} />}
-        微信支付
-      </button>
-      <button className="button button-secondary" onClick={() => buy("alipay")} disabled={loading}>
-        支付宝
+      <button className="button button-primary" onClick={buy} disabled={loading}>
+        {loading ? <Loader2 size={16} /> : null}
+        支付宝支付
       </button>
       {message ? <p className="notice">{message}</p> : null}
       {checkout ? (
         <div className="checkout-panel">
           <div>
-            <span className="tag">{checkout.provider === "wechat" ? "微信扫码" : "支付宝扫码"}</span>
+            <span className="tag">支付宝扫码</span>
             <h3>订单 ¥{((checkout.amountCents ?? 990) / 100).toFixed((checkout.amountCents ?? 990) % 100 === 0 ? 0 : 1)}</h3>
             <p className="muted">订单号：{checkout.paymentId}</p>
           </div>

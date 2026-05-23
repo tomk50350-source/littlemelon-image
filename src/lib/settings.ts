@@ -15,7 +15,6 @@ export type AdminSettings = ImageProviderSettings & {
   smtpUser?: string;
   smtpFrom?: string;
   hasSmtpPassword: boolean;
-  wechatQr?: string;
   alipayQr?: string;
   alipayAppId?: string;
   alipayPublicKey?: string;
@@ -60,7 +59,6 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     smtpUser: values.smtpUser || "",
     smtpFrom: values.smtpFrom || "",
     hasSmtpPassword: Boolean(values.smtpPassword),
-    wechatQr: values.wechatQr || "",
     alipayQr: values.alipayQr || "",
     alipayAppId: values.alipayAppId || process.env.ALIPAY_APP_ID || "",
     alipayPublicKey: values.alipayPublicKey || "",
@@ -101,7 +99,6 @@ export async function saveAdminSettings(input: {
   smtpUser?: string;
   smtpPassword?: string;
   smtpFrom?: string;
-  wechatQr?: string;
   alipayQr?: string;
   alipayAppId?: string;
   alipayPrivateKey?: string;
@@ -115,7 +112,6 @@ export async function saveAdminSettings(input: {
     ["smtpSecure", typeof input.smtpSecure === "boolean" ? String(input.smtpSecure) : undefined],
     ["smtpUser", input.smtpUser],
     ["smtpFrom", input.smtpFrom],
-    ["wechatQr", input.wechatQr],
     ["alipayQr", input.alipayQr],
     ["alipayAppId", input.alipayAppId],
     ["alipayPublicKey", input.alipayPublicKey]

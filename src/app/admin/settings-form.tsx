@@ -15,7 +15,6 @@ type SettingsFormProps = {
     smtpUser: string;
     smtpFrom: string;
     hasSmtpPassword: boolean;
-    wechatQr: string;
     alipayQr: string;
     alipayAppId: string;
     alipayPublicKey: string;
@@ -35,7 +34,6 @@ export function SettingsForm({ initial }: SettingsFormProps) {
   const [smtpUser, setSmtpUser] = useState(initial.smtpUser);
   const [smtpPassword, setSmtpPassword] = useState("");
   const [smtpFrom, setSmtpFrom] = useState(initial.smtpFrom);
-  const [wechatQr, setWechatQr] = useState(initial.wechatQr);
   const [alipayQr, setAlipayQr] = useState(initial.alipayQr);
   const [alipayAppId, setAlipayAppId] = useState(initial.alipayAppId);
   const [alipayPrivateKey, setAlipayPrivateKey] = useState("");
@@ -62,7 +60,6 @@ export function SettingsForm({ initial }: SettingsFormProps) {
         smtpUser,
         smtpPassword,
         smtpFrom,
-        wechatQr,
         alipayQr,
         alipayAppId,
         alipayPrivateKey,
@@ -163,18 +160,11 @@ export function SettingsForm({ initial }: SettingsFormProps) {
 
       <div className="settings-divider" />
       <h2>支付收款码</h2>
-      <p className="muted">上传微信和支付宝收款码，用户购买月卡时会看到扫码付款页面。</p>
-      <div className="qr-settings-grid">
-        <div className="field">
-          <label>微信收款码</label>
-          <input className="input" type="file" accept="image/*" onChange={(event) => readQr(event.target.files?.[0], setWechatQr)} />
-          {wechatQr ? <img className="qr-preview" src={wechatQr} alt="微信收款码" /> : null}
-        </div>
-        <div className="field">
-          <label>支付宝收款码</label>
-          <input className="input" type="file" accept="image/*" onChange={(event) => readQr(event.target.files?.[0], setAlipayQr)} />
-          {alipayQr ? <img className="qr-preview" src={alipayQr} alt="支付宝收款码" /> : null}
-        </div>
+      <p className="muted">上传支付宝收款码，用户购买月卡或随买随用时会看到扫码付款页面。</p>
+      <div className="field">
+        <label>支付宝收款码</label>
+        <input className="input" type="file" accept="image/*" onChange={(event) => readQr(event.target.files?.[0], setAlipayQr)} />
+        {alipayQr ? <img className="qr-preview" src={alipayQr} alt="支付宝收款码" /> : null}
       </div>
       <div className="settings-divider" />
       <h2>支付宝自动回调</h2>
