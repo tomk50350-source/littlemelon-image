@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import { sendVerificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validators";
 
@@ -39,10 +40,11 @@ export async function POST(request: Request) {
 
   const baseUrl = process.env.NEXTAUTH_URL || new URL(request.url).origin;
   const verifyUrl = `${baseUrl}/api/verify-email?token=${token}&email=${encodeURIComponent(email.toLowerCase())}`;
+  const mail = await sendVerificationEmail({ email: email.toLowerCase(), verifyUrl });
 
   return NextResponse.json({
     ok: true,
-    message: "验证邮件已生成，请先验证邮箱后再登录。",
-    verifyUrl: process.env.NODE_ENV !== "production" ? verifyUrl : undefined
+    message: mail.sent ? "验证邮件已发送，请先验证邮箱后再登录。" : "验证链接已生成，请先验证邮箱后再登录。",
+    verifyUrl: !mail.sent ? verifyUrl : undefined
   });
 }

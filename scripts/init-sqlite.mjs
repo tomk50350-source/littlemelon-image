@@ -7,7 +7,9 @@ const statements = [
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT,
     "email" TEXT NOT NULL UNIQUE,
+    "emailVerified" DATETIME,
     "passwordHash" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'USER',
     "image" TEXT,
     "freeTrialUsed" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -87,6 +89,8 @@ const statements = [
     "imageUrl" TEXT,
     "originalUrl" TEXT,
     "errorMessage" TEXT,
+    "referenceImages" TEXT,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "Generation_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -102,9 +106,22 @@ const statements = [
     "sizeLabel" TEXT NOT NULL,
     "featured" BOOLEAN NOT NULL DEFAULT false,
     "sourceUrl" TEXT,
+    "popularity" INTEGER NOT NULL DEFAULT 0,
+    "repoStars" INTEGER NOT NULL DEFAULT 0,
+    "repoForks" INTEGER NOT NULL DEFAULT 0,
     "updatedAt" DATETIME NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
+  `CREATE TABLE IF NOT EXISTS "Favorite" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "promptGalleryId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Favorite_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Favorite_promptGalleryId_fkey" FOREIGN KEY ("promptGalleryId") REFERENCES "PromptGallery" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "Favorite_userId_promptGalleryId_key" ON "Favorite"("userId", "promptGalleryId")`,
+  `CREATE INDEX IF NOT EXISTS "Favorite_userId_createdAt_idx" ON "Favorite"("userId", "createdAt")`,
   `CREATE TABLE IF NOT EXISTS "Payment" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
@@ -300,18 +317,35 @@ for (const statement of statements) {
   await prisma.$executeRawUnsafe(statement);
 }
 
-await prisma.plan.upsert({
-  where: { id: "monthly-99" },
-  update: {},
-  create: {
-    id: "monthly-99",
-    name: "LittleMelon Pro 月卡",
-    priceCents: 990,
-    credits: 100,
-    periodDays: 30,
-    updatedAt: new Date()
+for (const statement of [
+  `ALTER TABLE "User" ADD COLUMN "emailVerified" DATETIME`,
+  `ALTER TABLE "User" ADD COLUMN "role" TEXT NOT NULL DEFAULT 'USER'`,
+  `ALTER TABLE "Generation" ADD COLUMN "referenceImages" TEXT`,
+  `ALTER TABLE "Generation" ADD COLUMN "quantity" INTEGER NOT NULL DEFAULT 1`,
+  `ALTER TABLE "PromptGallery" ADD COLUMN "popularity" INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE "PromptGallery" ADD COLUMN "repoStars" INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE "PromptGallery" ADD COLUMN "repoForks" INTEGER NOT NULL DEFAULT 0`
+]) {
+  try {
+    await prisma.$executeRawUnsafe(statement);
+  } catch {
+    // SQLite throws when the column already exists; this initializer is idempotent.
   }
-});
+}
+
+for (const plan of [
+  { id: "plus-990", name: "Plus 月卡", priceCents: 990, credits: 100, periodDays: 30 },
+  { id: "pro-9900", name: "Pro 月卡", priceCents: 9900, credits: 1500, periodDays: 30 },
+  { id: "payg-1k-50", name: "随买随用 1K", priceCents: 50, credits: 1, periodDays: 0 },
+  { id: "payg-2k-100", name: "随买随用 2K", priceCents: 100, credits: 2, periodDays: 0 },
+  { id: "payg-4k-200", name: "随买随用 4K", priceCents: 200, credits: 4, periodDays: 0 }
+]) {
+  await prisma.plan.upsert({
+    where: { id: plan.id },
+    update: plan,
+    create: { ...plan, updatedAt: new Date() }
+  });
+}
 
 for (const item of prompts) {
   await prisma.promptGallery.upsert({

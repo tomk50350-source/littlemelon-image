@@ -1,7 +1,7 @@
 import { PaymentStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/admin";
-import { addMonthlyCredits } from "@/lib/credits";
+import { addPaidCredits } from "@/lib/credits";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(_: Request, context: { params: Promise<{ id: string }> }) {
@@ -27,7 +27,7 @@ export async function POST(_: Request, context: { params: Promise<{ id: string }
       providerTradeNo: `manual-${Date.now()}`
     }
   });
-  await addMonthlyCredits(payment.userId, payment.id);
+  await addPaidCredits(payment.userId, payment.id, payment.planId);
 
   return NextResponse.json({ ok: true });
 }

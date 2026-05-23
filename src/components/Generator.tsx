@@ -15,17 +15,23 @@ type HistoryItem = {
 
 type GenerationResponse = {
   generation?: HistoryItem;
+  outputs?: { imageUrl: string; originalUrl: string }[];
   error?: string;
 };
 
 export function Generator() {
   const [scenario, setScenario] = useState("ecommerce");
   const [mode, setMode] = useState<"text" | "reference" | "edit">("text");
-  const [sizeLabel, setSizeLabel] = useState<ImageSizeLabel>("2K");
+  const [sizeLabel, setSizeLabel] = useState<ImageSizeLabel>("1K");
+  const [quantity, setQuantity] = useState(1);
   const [prompt, setPrompt] = useState("为一款小众护肤品生成高级电商主图，浅绿色背景，真实摄影棚布光，产品居中，有柔和阴影。");
   const [result, setResult] = useState<HistoryItem | null>(null);
+  const [outputs, setOutputs] = useState<{ imageUrl: string; originalUrl: string }[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [balance, setBalance] = useState(0);
+  const [tier, setTier] = useState("free");
+  const [maxReferenceImages, setMaxReferenceImages] = useState(0);
+  const [maxQuantity, setMaxQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
@@ -40,6 +46,9 @@ export function Generator() {
     const data = await response.json();
     setBalance(data.balance ?? 0);
     setHistory(data.history ?? []);
+    setTier(data.tier ?? "free");
+    setMaxReferenceImages(data.maxReferenceImages ?? 0);
+    setMaxQuantity(data.maxQuantity ?? 1);
   }
 
   useEffect(() => {
@@ -54,7 +63,7 @@ export function Generator() {
       const response = await fetch("/api/generations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, scenario, mode, sizeLabel, referenceImages })
+        body: JSON.stringify({ prompt, scenario, mode, sizeLabel, quantity, referenceImages })
       });
       const data = (await response.json()) as GenerationResponse;
 
@@ -64,6 +73,7 @@ export function Generator() {
       }
 
       setResult(data.generation);
+      setOutputs(data.outputs ?? (data.generation?.imageUrl ? [{ imageUrl: data.generation.imageUrl, originalUrl: data.generation.originalUrl ?? data.generation.imageUrl }] : []));
       await refreshMe();
     } finally {
       setLoading(false);
@@ -73,13 +83,17 @@ export function Generator() {
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
     setMessage("");
+    if (maxReferenceImages <= 0) {
+      setMessage("Free 只能文生图；升级 Plus 后可上传 2 张参考图，Pro/随买随用可上传 3 张。");
+      return;
+    }
     const selected = Array.from(files).filter((file) => file.type.startsWith("image/"));
-    if (referenceImages.length + selected.length > 9) {
-      setMessage("最多上传 9 张参考图");
+    if (referenceImages.length + selected.length > maxReferenceImages) {
+      setMessage(`当前套餐最多上传 ${maxReferenceImages} 张参考图`);
       return;
     }
     const encoded = await Promise.all(selected.map(readImageFile));
-    setReferenceImages((current) => [...current, ...encoded].slice(0, 9));
+    setReferenceImages((current) => [...current, ...encoded].slice(0, maxReferenceImages));
     if (mode === "text") setMode("reference");
   }
 
@@ -88,17 +102,17 @@ export function Generator() {
   }
 
   return (
-    <section id="generator" className="studio-card generator">
+    <section id="generator" className="studio-card generator generator-compact">
       <div className="generator-form">
         <div className="section-title compact">
           <div>
-            <h2>生成工作台</h2>
-            <p className="muted">选择场景、尺寸和任务类型，登录后可免费试运行 1 张。</p>
+            <h2>AI 图片工作台</h2>
+            <p className="muted">输入需求，选择尺寸，生成后可下载原图。</p>
           </div>
-          <span className="tag">余额 {balance.toFixed(1)} 积分</span>
+          <span className="tag">{tier.toUpperCase()} · {balance.toFixed(0)} 积分</span>
         </div>
 
-        <div className="scenario-grid studio-scenarios">
+        <div className="scenario-grid studio-scenarios compact-scenarios">
           {SCENARIOS.map((item) => (
             <button
               className={`scenario-card ${scenario === item.id ? "active" : ""}`}
@@ -147,6 +161,33 @@ export function Generator() {
           </div>
         </div>
 
+        <div className="control-row">
+          <div className="field">
+            <label>生成数量</label>
+            <div className="segmented quantity-segmented">
+              {[1, 2].map((value) => (
+                <button
+                  className={`segment ${quantity === value ? "active" : ""}`}
+                  key={value}
+                  onClick={() => {
+                    if (value > maxQuantity) {
+                      setMessage("Plus / Pro 支持一次提示词生成 2 张；Free 和随买随用默认 1 张。");
+                      return;
+                    }
+                    setQuantity(value);
+                  }}
+                >
+                  {value} 张
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="field">
+            <label>参考图权限</label>
+            <div className="quota-box">最多 {maxReferenceImages} 张参考图</div>
+          </div>
+        </div>
+
         <div className="field">
           <label>{activeScenario.title}提示词</label>
           <textarea className="textarea" value={prompt} onChange={(event) => setPrompt(event.target.value)} />
@@ -160,7 +201,7 @@ export function Generator() {
         </div>
 
         <div className="field">
-          <label>参考图片（最多 9 张）</label>
+          <label>参考图片</label>
           <label className="upload-box">
             <input
               type="file"
@@ -172,7 +213,7 @@ export function Generator() {
               }}
             />
             <Upload size={18} />
-            <span>上传产品、人物、风格或需要修图的参考图</span>
+            <span>{maxReferenceImages > 0 ? `上传产品、人物、风格或需要修图的参考图，最多 ${maxReferenceImages} 张` : "Free 不支持参考图上传"}</span>
           </label>
           {referenceImages.length ? (
             <div className="upload-grid">
@@ -193,7 +234,7 @@ export function Generator() {
 
         <button className="button button-primary generate-button" disabled={loading} onClick={submit}>
           {loading ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
-          {loading ? "生成中" : `立即开始创作 · ${CREDIT_COSTS[sizeLabel]} 积分`}
+          {loading ? "生成中" : `立即生成 · ${CREDIT_COSTS[sizeLabel] * quantity} 积分`}
         </button>
       </div>
 
@@ -211,9 +252,13 @@ export function Generator() {
           ) : null}
         </div>
         <div className="result-box">
-          {result?.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={result.imageUrl} alt="生成结果" />
+          {outputs.length ? (
+            <div className={`result-output-grid ${outputs.length > 1 ? "multi" : ""}`}>
+              {outputs.map((item, index) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={item.imageUrl} alt={`生成结果 ${index + 1}`} key={`${item.imageUrl}-${index}`} />
+              ))}
+            </div>
           ) : (
             <div className="empty-result">
               <div className="empty-icon">

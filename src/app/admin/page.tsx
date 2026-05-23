@@ -73,7 +73,7 @@ export default async function AdminPage() {
                   </a>
                   <a className="stat" href="#admin-prompts">
                     <strong>{prompts}</strong>
-                    <span>图库案例</span>
+                    <span>创意案例</span>
                   </a>
                 </div>
               </div>
@@ -85,11 +85,16 @@ export default async function AdminPage() {
                   hasApiKey: Boolean(settings.apiKey),
                   emailProvider: settings.emailProvider,
                   smtpHost: settings.smtpHost || "",
+                  smtpPort: settings.smtpPort || 465,
+                  smtpSecure: settings.smtpSecure ?? true,
                   smtpUser: settings.smtpUser || "",
                   smtpFrom: settings.smtpFrom || "",
                   hasSmtpPassword: settings.hasSmtpPassword,
                   wechatQr: settings.wechatQr || "",
-                  alipayQr: settings.alipayQr || ""
+                  alipayQr: settings.alipayQr || "",
+                  alipayAppId: settings.alipayAppId || "",
+                  alipayPublicKey: settings.alipayPublicKey || "",
+                  hasAlipayPrivateKey: settings.hasAlipayPrivateKey
                 }}
               />
               <section className="panel admin-section" id="admin-users">
@@ -169,8 +174,8 @@ export default async function AdminPage() {
               <section className="panel admin-section" id="admin-prompts">
                 <div className="section-title compact">
                   <div>
-                    <h2>图库案例</h2>
-                    <p className="muted">最近同步的提示词图库内容。</p>
+                    <h2>创意案例</h2>
+                    <p className="muted">最近同步的 GitHub 创意案例。</p>
                   </div>
                 </div>
                 <div className="admin-table">

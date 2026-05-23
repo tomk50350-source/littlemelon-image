@@ -10,9 +10,28 @@ type CheckoutState = {
   qrImage?: string;
   qrText?: string;
   manualReview?: boolean;
+  planName?: string;
+  amountCents?: number;
 };
 
-export function PricingActions() {
+const planOptions = [
+  { id: "plus-990", label: "Plus · ¥9.9 · 100 积分" },
+  { id: "pro-9900", label: "Pro · ¥99 · 1500 积分" },
+  { id: "payg-1k-50", label: "1K · ¥0.5 · 1 积分" },
+  { id: "payg-2k-100", label: "2K · ¥1 · 2 积分" },
+  { id: "payg-4k-200", label: "4K · ¥2 · 4 积分" }
+] as const;
+
+export function PricingActions({
+  defaultPlanId = "plus-990",
+  compact = false,
+  allowPayg = false
+}: {
+  defaultPlanId?: string;
+  compact?: boolean;
+  allowPayg?: boolean;
+}) {
+  const [planId, setPlanId] = useState(defaultPlanId);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [checkout, setCheckout] = useState<CheckoutState | null>(null);
@@ -25,7 +44,7 @@ export function PricingActions() {
       const response = await fetch("/api/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider })
+        body: JSON.stringify({ provider, planId })
       });
       const data = await response.json();
       if (!response.ok) {
@@ -38,7 +57,9 @@ export function PricingActions() {
         checkoutUrl: data.checkout.checkoutUrl,
         qrImage: data.checkout.qrImage,
         qrText: data.checkout.qrText,
-        manualReview: data.checkout.manualReview
+        manualReview: data.checkout.manualReview,
+        planName: data.payment.planId,
+        amountCents: data.payment.amountCents
       };
 
       if (nextCheckout.checkoutUrl && !nextCheckout.manualReview) {
@@ -54,6 +75,23 @@ export function PricingActions() {
 
   return (
     <div className="field">
+      {allowPayg ? (
+        <select className="select" value={planId} onChange={(event) => setPlanId(event.target.value)}>
+          {planOptions.slice(2).map((plan) => (
+            <option value={plan.id} key={plan.id}>
+              {plan.label}
+            </option>
+          ))}
+        </select>
+      ) : compact ? null : (
+        <select className="select" value={planId} onChange={(event) => setPlanId(event.target.value)}>
+          {planOptions.slice(0, 2).map((plan) => (
+            <option value={plan.id} key={plan.id}>
+              {plan.label}
+            </option>
+          ))}
+        </select>
+      )}
       <button className="button button-primary" onClick={() => buy("wechat")} disabled={loading}>
         {loading ? <Loader2 size={16} /> : <CreditCard size={16} />}
         微信支付
@@ -66,7 +104,7 @@ export function PricingActions() {
         <div className="checkout-panel">
           <div>
             <span className="tag">{checkout.provider === "wechat" ? "微信扫码" : "支付宝扫码"}</span>
-            <h3>月卡订单 ¥9.9</h3>
+            <h3>订单 ¥{((checkout.amountCents ?? 990) / 100).toFixed((checkout.amountCents ?? 990) % 100 === 0 ? 0 : 1)}</h3>
             <p className="muted">订单号：{checkout.paymentId}</p>
           </div>
           {checkout.qrImage ? (
@@ -75,7 +113,7 @@ export function PricingActions() {
             <div className="checkout-empty">待管理员上传收款码</div>
           )}
           <p>{checkout.qrText}</p>
-          <p className="muted">付款后管理员在后台确认到账，系统会自动发放 100 积分。</p>
+          <p className="muted">付款后管理员在后台确认到账，系统会自动发放对应积分。</p>
         </div>
       ) : null}
     </div>

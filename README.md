@@ -1,21 +1,23 @@
 # LittleMelon Image
 
-LittleMelon Image 是一个中文 AI 生图网站 MVP，重点服务电商产品图和 AI 修图。
+LittleMelon Image 是一个中文 AI 生图网站 MVP，重点服务电商产品图、AI 修图、专利制图标准线条图和 GPT-Image-2 创意案例浏览。
 
 ## 已实现
 
-- 注册、登录和用户会话。
-- 注册后 1 次免费试运行。
-- GPT-Image-2 生图适配器，未配置 `OPENAI_API_KEY` 时自动使用演示图。
-- 专利制图标准线条图入口，支持黑白线稿、结构示意、爆炸图和编号标注提示词。
+- 注册、邮箱验证、登录和用户会话。
+- 注册后 1 次免费试用，仅限 1 张 1K 文生图。
+- GPT-Image-2 生图适配器，支持管理员后台填写 API Key、中转地址、模型名和并发上限。
 - 只支持 `1K / 2K / 4K`，无 8K 入口。
-- 积分规则：`1K=0.6`、`2K=1`、`4K=2`。
-- `9.9 元/月 = 100 积分`，会员积分月底清零。
+- 积分规则：`1K=1`、`2K=2`、`4K=4`。
+- 套餐：Free、Plus `9.9 元 / 100 积分`、Pro `99 元 / 1500 积分`、随买随用 `0.5/1/2 元`。
+- 参考图限制：Free 0 张，Plus 2 张，Pro/随买随用 3 张。
+- Plus/Pro 支持一个提示词一次生成 2 张。
 - 生成前预扣积分，失败自动退回。
 - 最近 5 张历史和原图下载。
-- 提示词图库、价格页、后台概览。
-- GitHub 图库同步：固定同步 YouMind、wuyoscar 两个优质源，并自动搜索发现更多 GPT-Image-2 / image2 创意仓库。
-- 微信/支付宝支付接口位置已预留，默认 mock 支付方便本地测试。
+- 创意案例无限加载、最新/热度排序、中英文切换入口、会员收藏最多 100 张。
+- GitHub 创意案例同步：固定同步 YouMind、EvoLinkAI、PicoTrex、wuyoscar，并可发现更多 GPT-Image-2 / image2 仓库。
+- 后台支持上传微信/支付宝收款码，管理员确认到账后自动发放对应积分。
+- 支付宝异步通知入口：`/api/payments/alipay-notify`，配置 App ID 和支付宝公钥后可自动验签发积分。
 
 ## 本地运行
 
@@ -23,42 +25,62 @@ LittleMelon Image 是一个中文 AI 生图网站 MVP，重点服务电商产品
 copy .env.example .env
 npm install
 npx prisma db push
-npx prisma db seed
+npm run admin:ensure
+npm run sync:gallery
 npm run dev
 ```
 
-本地预览地址默认是：
+本地预览地址：
 
 ```text
 http://localhost:3012
 ```
 
-如果当前 Windows 的全局 `npm` 命令损坏，可临时使用：
+默认超级管理员：
 
-```powershell
-& 'C:\Program Files\nodejs\node.exe' 'C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js' install
+```text
+admin@littlemelon.local
+LittleMelon@2026
 ```
+
+上线前请在 `.env` 里修改 `ADMIN_EMAIL` / `ADMIN_PASSWORD` 后重新执行 `npm run admin:ensure`。
 
 ## 关键环境变量
 
-- `DATABASE_URL`：数据库地址。默认 SQLite 开发库，生产建议 PostgreSQL。
-- `NEXTAUTH_URL`：站点地址。
+- `DATABASE_URL`：数据库地址，当前 MVP 默认 SQLite，适合 2 核 2G VPS 起步。
+- `NEXTAUTH_URL`：站点地址，生产必须改成你的 HTTPS 域名。
 - `NEXTAUTH_SECRET`：登录会话密钥。
-- `OPENAI_API_KEY`：配置后走真实 GPT-Image-2 或你的中转 API。
-- `OPENAI_BASE_URL`：可选，中转 API 地址，例如 `https://api.example.com`。
+- `OPENAI_API_KEY`：GPT-Image-2 或中转 API Key。
+- `OPENAI_BASE_URL`：中转 API 地址。
 - `OPENAI_IMAGE_MODEL`：默认 `gpt-image-2`。
-- `PAYMENT_PROVIDER`：默认 `mock`，生产支付接入后改为真实服务商。
-- `GITHUB_SYNC_TOKEN`：后台手动同步 GitHub 图库时使用的保护 token。
-- `GITHUB_TOKEN`：可选。用于提高 GitHub 搜索和同步限额，建议服务器生产环境配置。
+- `MAX_CONCURRENT_GENERATIONS`：生成并发上限，2 核 2G VPS 建议 1 到 2。
+- `GITHUB_TOKEN`：可选，提高 GitHub 同步限额。
+- `ALIPAY_APP_ID` / `ALIPAY_PRIVATE_KEY`：可选，也可以在后台填写。
 
-## 同步 GitHub 图库
+## 邮箱认证
 
-同步逻辑不是照搬单个网站，而是：
+开发阶段可用注册页返回的本地验证链接。
 
-- 固定优先抓取两个你指定的开源项目，作为高质量基础库。
-- 自动在 GitHub 搜索 `gpt-image-2`、`GPT Image 2`、`image2 prompt` 等相关仓库。
-- 只纳入名称、简介、主题与 GPT-Image-2 / image2 / prompt / gallery 明确相关的仓库。
-- 每次同步会去重、分类，并把最新案例写入前台提示词图库。
+正式上线建议在后台填写 SMTP：
+
+- Host：邮件服务商 SMTP 地址。
+- 端口：SSL 常用 `465`，STARTTLS 常用 `587`。
+- 用户名/密码：邮件服务商提供的 SMTP 账号或授权码。
+- 发件人：如 `LittleMelon Image <no-reply@你的域名>`。
+
+## 支付宝自动发积分
+
+可以自动发放积分，条件是：
+
+- 你有支付宝开放平台应用。
+- 网站已部署到 HTTPS 域名。
+- 后台填写 Alipay App ID、应用私钥、支付宝公钥。
+- 支付订单的 `out_trade_no` 使用本系统订单号。
+- 支付宝异步通知地址填写：`https://你的域名/api/payments/alipay-notify`。
+
+系统收到支付宝 `TRADE_SUCCESS` 或 `TRADE_FINISHED` 后会验签、幂等确认订单并发放积分。
+
+## 同步 GitHub 创意案例
 
 本地或服务器手动同步：
 
@@ -66,14 +88,7 @@ http://localhost:3012
 npm run sync:gallery
 ```
 
-后台 API 手动触发：
-
-```bash
-curl -X POST https://你的域名/api/admin/sync-gallery \
-  -H "x-sync-token: 你的 GITHUB_SYNC_TOKEN"
-```
-
-服务器每天自动同步一次，可加 cron：
+建议服务器每天自动同步一次：
 
 ```bash
 0 3 * * * cd /var/www/littlemelon-image && npm run sync:gallery >> logs/gallery-sync.log 2>&1
@@ -81,15 +96,6 @@ curl -X POST https://你的域名/api/admin/sync-gallery \
 
 ## 生产部署建议
 
-- 应用：Next.js 部署到你的服务器，前置 Nginx + HTTPS。
-- 数据库：PostgreSQL。
-- 队列/限流：Redis，用于生成任务队列、用户频率限制和支付回调幂等。
-- 图片存储：S3 兼容对象存储或服务器自建 MinIO。
-- 支付：微信支付 Native + 支付宝当面付或聚合支付服务商。
-
-## 下一步
-
-- 接入真实微信/支付宝 SDK 和回调验签。
-- 把 OpenAI 返回的图片落到对象存储，避免依赖临时 URL。
-- 为后台增加管理员权限、图库批量导入、订单搜索和失败任务重试。
-- 加 Redis 限流，防止免费试用被刷。
+- VPS 配置 2 核 2G 时，先使用 Docker + Next.js + SQLite，生成并发设为 1。
+- 图片长期保存建议后续接 S3 兼容对象存储，避免数据库变大。
+- 用户量上来后再换 PostgreSQL + Redis，不建议第一版就把 VPS 压满。

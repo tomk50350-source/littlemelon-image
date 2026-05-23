@@ -18,7 +18,7 @@ export async function Header() {
         </Link>
         <nav className="nav-links">
           <Link href="/#generator">生成</Link>
-          <Link href="/gallery">提示词图库</Link>
+          <Link href="/gallery">创意案例</Link>
           <Link href="/pricing">价格</Link>
           <Link href="/history">历史</Link>
           {isAdmin ? <Link href="/admin">后台</Link> : null}

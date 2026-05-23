@@ -41,6 +41,8 @@ const SOURCES = [
   }
 ];
 
+const SOURCE_HEAT_CACHE = new Map();
+
 const SEARCH_QUERIES = [
   "gpt-image-2 prompts",
   "\"GPT Image 2\" prompt gallery",
@@ -63,16 +65,17 @@ export async function syncGitHubGallery({ limitPerSource = DEFAULT_LIMIT_PER_SOU
   const sourceCounts = [];
 
   for (const source of sources) {
+    const sourceHeat = await getSourceHeat(source);
     const sourceLimit = source.priority ? limitPerSource : Math.min(80, limitPerSource);
     const before = allItems.length;
     for (const file of source.files) {
       if (file.endsWith(".json")) {
-        allItems.push(...(await fetchJsonGallery(source, file, sourceLimit)));
+        allItems.push(...(await fetchJsonGallery(source, file, sourceLimit, sourceHeat)));
         continue;
       }
       const markdown = await fetchRawFile(source, file);
       if (markdown) {
-        allItems.push(...parseMarkdownGallery(markdown, source, file, sourceLimit));
+        allItems.push(...parseMarkdownGallery(markdown, source, file, sourceLimit, sourceHeat));
       }
     }
     sourceCounts.push({ source: source.label, count: allItems.length - before });
@@ -147,6 +150,25 @@ async function discoverGitHubSources() {
   return [...found.values()];
 }
 
+async function getSourceHeat(source) {
+  if (SOURCE_HEAT_CACHE.has(source.repo)) return SOURCE_HEAT_CACHE.get(source.repo);
+  const fallback = { stars: 0, forks: 0, updatedAt: "" };
+  try {
+    const response = await fetchWithRetry(`https://api.github.com/repos/${source.repo}`);
+    if (!response.ok) return fallback;
+    const repo = await response.json();
+    const heat = {
+      stars: Number(repo.stargazers_count || 0),
+      forks: Number(repo.forks_count || 0),
+      updatedAt: repo.updated_at || ""
+    };
+    SOURCE_HEAT_CACHE.set(source.repo, heat);
+    return heat;
+  } catch {
+    return fallback;
+  }
+}
+
 function mergeSources(curated, discovered) {
   const seen = new Set(curated.map((source) => source.repo.toLowerCase()));
   return [
@@ -192,7 +214,7 @@ async function fetchGitHubContentsFile(source, file) {
   }
 }
 
-async function fetchJsonGallery(source, file, limit) {
+async function fetchJsonGallery(source, file, limit, sourceHeat) {
   const raw = await fetchRawFile(source, file);
   if (!raw) return [];
   try {
@@ -206,6 +228,7 @@ async function fetchJsonGallery(source, file, limit) {
         return makeItem({
           source,
           file,
+          sourceHeat,
           prompt,
           title: cleanText(row.title || row.source_title || prompt.slice(0, 36)),
           category: mapCategory(`${row.category || ""} ${prompt}`, imageFile),
@@ -220,7 +243,7 @@ async function fetchJsonGallery(source, file, limit) {
   }
 }
 
-function parseMarkdownGallery(markdown, source, file, limit) {
+function parseMarkdownGallery(markdown, source, file, limit, sourceHeat) {
   const sections = splitCaseSections(markdown);
   const items = [];
 
@@ -240,6 +263,7 @@ function parseMarkdownGallery(markdown, source, file, limit) {
       items.push(makeItem({
         source,
         file,
+        sourceHeat,
         prompt,
         title,
         category: mapCategory(`${title} ${prompt}`, image.raw),
@@ -338,7 +362,9 @@ function extractSourceUrl(sectionBody) {
   return match?.[1] || "";
 }
 
-function makeItem({ source, file, prompt, title, category, imageUrl, ordinal, sourceUrl }) {
+function makeItem({ source, file, sourceHeat, prompt, title, category, imageUrl, ordinal, sourceUrl }) {
+  const heat = sourceHeat || { stars: 0, forks: 0, updatedAt: "" };
+  const recencyBonus = heat.updatedAt ? Math.max(0, 120 - Math.floor((Date.now() - Date.parse(heat.updatedAt)) / (1000 * 60 * 60 * 24))) : 0;
   return {
     id: `github-${source.id}-${slugify(file)}-${slugify(title)}-${ordinal}`,
     title: (title || prompt.slice(0, 28)).slice(0, 80),
@@ -348,7 +374,10 @@ function makeItem({ source, file, prompt, title, category, imageUrl, ordinal, so
     model: source.model || "GPT-Image-2",
     tags: inferTags(prompt, category).join(","),
     sizeLabel: inferSize(prompt),
-    sourceUrl
+    sourceUrl,
+    repoStars: heat.stars,
+    repoForks: heat.forks,
+    popularity: heat.stars * 10 + heat.forks * 4 + recencyBonus
   };
 }
 
@@ -382,7 +411,10 @@ function sanitizeGalleryItem(item) {
     model: cleanField(item.model) || "GPT-Image-2",
     tags: cleanField(item.tags),
     sizeLabel: cleanField(item.sizeLabel) || "2K",
-    sourceUrl: item.sourceUrl ? cleanUrl(item.sourceUrl) : null
+    sourceUrl: item.sourceUrl ? cleanUrl(item.sourceUrl) : null,
+    popularity: Number(item.popularity || 0),
+    repoStars: Number(item.repoStars || 0),
+    repoForks: Number(item.repoForks || 0)
   };
 }
 

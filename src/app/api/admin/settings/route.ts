@@ -14,11 +14,16 @@ export async function GET() {
     hasApiKey: Boolean(settings.apiKey),
     emailProvider: settings.emailProvider,
     smtpHost: settings.smtpHost || "",
+    smtpPort: settings.smtpPort || 465,
+    smtpSecure: settings.smtpSecure,
     smtpUser: settings.smtpUser || "",
     smtpFrom: settings.smtpFrom || "",
     hasSmtpPassword: settings.hasSmtpPassword,
     wechatQr: settings.wechatQr || "",
-    alipayQr: settings.alipayQr || ""
+    alipayQr: settings.alipayQr || "",
+    alipayAppId: settings.alipayAppId || "",
+    alipayPublicKey: settings.alipayPublicKey || "",
+    hasAlipayPrivateKey: settings.hasAlipayPrivateKey
   });
 }
 
@@ -34,11 +39,16 @@ export async function POST(request: Request) {
     maxConcurrentGenerations: Number(body.maxConcurrentGenerations || 2),
     emailProvider: body.emailProvider,
     smtpHost: body.smtpHost,
+    smtpPort: Number(body.smtpPort || 465),
+    smtpSecure: Boolean(body.smtpSecure),
     smtpUser: body.smtpUser,
     smtpPassword: body.smtpPassword,
     smtpFrom: body.smtpFrom,
     wechatQr: body.wechatQr,
-    alipayQr: body.alipayQr
+    alipayQr: body.alipayQr,
+    alipayAppId: body.alipayAppId,
+    alipayPrivateKey: body.alipayPrivateKey,
+    alipayPublicKey: body.alipayPublicKey
   });
 
   return NextResponse.json({ ok: true });

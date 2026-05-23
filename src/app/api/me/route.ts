@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
-import { getCreditBalance } from "@/lib/credits";
+import { getCreditBalance, getTierMaxQuantity, getTierReferenceLimit, getUserTier } from "@/lib/credits";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -18,10 +18,14 @@ export async function GET() {
       take: 5
     })
   ]);
+  const tier = await getUserTier(session.user.id);
 
   return NextResponse.json({
     user: session.user,
     balance,
-    history
+    history,
+    tier,
+    maxReferenceImages: getTierReferenceLimit(tier),
+    maxQuantity: getTierMaxQuantity(tier)
   });
 }

@@ -10,11 +10,16 @@ export type ImageProviderSettings = {
 export type AdminSettings = ImageProviderSettings & {
   emailProvider: string;
   smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
   smtpUser?: string;
   smtpFrom?: string;
   hasSmtpPassword: boolean;
   wechatQr?: string;
   alipayQr?: string;
+  alipayAppId?: string;
+  alipayPublicKey?: string;
+  hasAlipayPrivateKey: boolean;
 };
 
 const defaults: ImageProviderSettings = {
@@ -50,11 +55,16 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     ...image,
     emailProvider: values.emailProvider || "dev-link",
     smtpHost: values.smtpHost || "",
+    smtpPort: Number(values.smtpPort || 465),
+    smtpSecure: values.smtpSecure !== "false",
     smtpUser: values.smtpUser || "",
     smtpFrom: values.smtpFrom || "",
     hasSmtpPassword: Boolean(values.smtpPassword),
     wechatQr: values.wechatQr || "",
-    alipayQr: values.alipayQr || ""
+    alipayQr: values.alipayQr || "",
+    alipayAppId: values.alipayAppId || process.env.ALIPAY_APP_ID || "",
+    alipayPublicKey: values.alipayPublicKey || "",
+    hasAlipayPrivateKey: Boolean(values.alipayPrivateKey || process.env.ALIPAY_PRIVATE_KEY)
   };
 }
 
@@ -86,23 +96,33 @@ export async function saveAdminSettings(input: {
   maxConcurrentGenerations?: number;
   emailProvider?: string;
   smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
   smtpUser?: string;
   smtpPassword?: string;
   smtpFrom?: string;
   wechatQr?: string;
   alipayQr?: string;
+  alipayAppId?: string;
+  alipayPrivateKey?: string;
+  alipayPublicKey?: string;
 }) {
   await saveImageProviderSettings(input);
   const entries = [
     ["emailProvider", input.emailProvider],
     ["smtpHost", input.smtpHost],
+    ["smtpPort", typeof input.smtpPort === "number" ? String(input.smtpPort) : undefined],
+    ["smtpSecure", typeof input.smtpSecure === "boolean" ? String(input.smtpSecure) : undefined],
     ["smtpUser", input.smtpUser],
     ["smtpFrom", input.smtpFrom],
     ["wechatQr", input.wechatQr],
-    ["alipayQr", input.alipayQr]
+    ["alipayQr", input.alipayQr],
+    ["alipayAppId", input.alipayAppId],
+    ["alipayPublicKey", input.alipayPublicKey]
   ] as const;
 
   if (input.smtpPassword?.trim()) await upsertSetting("smtpPassword", input.smtpPassword.trim());
+  if (input.alipayPrivateKey?.trim()) await upsertSetting("alipayPrivateKey", input.alipayPrivateKey.trim());
   for (const [key, value] of entries) {
     if (typeof value === "string") await upsertSetting(key, value.trim());
   }

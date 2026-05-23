@@ -2,9 +2,9 @@ export const APP_NAME = "LittleMelon Image";
 export const APP_CN_NAME = "小西瓜 AI 图片";
 
 export const CREDIT_COSTS = {
-  "1K": 0.6,
-  "2K": 1,
-  "4K": 2
+  "1K": 1,
+  "2K": 2,
+  "4K": 4
 } as const;
 
 export const IMAGE_SIZES = {
@@ -42,10 +42,54 @@ export const SCENARIOS = [
   }
 ] as const;
 
-export const MONTHLY_PLAN = {
-  id: "monthly-99",
-  name: "LittleMelon Pro 月卡",
+export const PLUS_PLAN = {
+  id: "plus-990",
+  name: "Plus 月卡",
   priceCents: 990,
   credits: 100,
   periodDays: 30
 };
+
+export const PRO_PLAN = {
+  id: "pro-9900",
+  name: "Pro 月卡",
+  priceCents: 9900,
+  credits: 1500,
+  periodDays: 30
+};
+
+export const PAYG_PLANS = [
+  {
+    id: "payg-1k-50",
+    name: "随买随用 1K",
+    priceCents: 50,
+    credits: 1,
+    periodDays: 0,
+    sizeLabel: "1K"
+  },
+  {
+    id: "payg-2k-100",
+    name: "随买随用 2K",
+    priceCents: 100,
+    credits: 2,
+    periodDays: 0,
+    sizeLabel: "2K"
+  },
+  {
+    id: "payg-4k-200",
+    name: "随买随用 4K",
+    priceCents: 200,
+    credits: 4,
+    periodDays: 0,
+    sizeLabel: "4K"
+  }
+] as const;
+
+export const BILLING_PLANS = [PLUS_PLAN, PRO_PLAN, ...PAYG_PLANS] as const;
+
+export type BillingPlanId = (typeof BILLING_PLANS)[number]["id"];
+
+export const FREE_TRIAL_SIZE: ImageSizeLabel = "1K";
+export const FREE_GALLERY_LIMIT = 200;
+export const PUBLIC_GALLERY_LIMIT = 60;
+export const MEMBER_FAVORITE_LIMIT = 100;

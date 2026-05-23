@@ -2,8 +2,15 @@ import { CreditSource, GenerationStatus } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
-import { CREDIT_COSTS, IMAGE_SIZES } from "@/lib/constants";
-import { debitCredits, getCreditBalance, refundCredits } from "@/lib/credits";
+import { CREDIT_COSTS, FREE_TRIAL_SIZE, IMAGE_SIZES } from "@/lib/constants";
+import {
+  debitCredits,
+  getCreditBalance,
+  getTierMaxQuantity,
+  getTierReferenceLimit,
+  getUserTier,
+  refundCredits
+} from "@/lib/credits";
 import { runWithGenerationLimit } from "@/lib/generation-queue";
 import { generateImage } from "@/lib/openai-image";
 import { prisma } from "@/lib/prisma";
@@ -37,20 +44,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const { prompt, scenario, mode, sizeLabel, referenceImages } = parsed.data;
+  const { prompt, scenario, mode, sizeLabel, referenceImages, quantity } = parsed.data;
   const cost = CREDIT_COSTS[sizeLabel];
   const size = IMAGE_SIZES[sizeLabel];
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
+  const tier = await getUserTier(user.id);
+  const maxReferenceImages = getTierReferenceLimit(tier);
+  const maxQuantity = getTierMaxQuantity(tier);
+
+  if (referenceImages.length > maxReferenceImages) {
+    return NextResponse.json({ error: `当前套餐最多上传 ${maxReferenceImages} 张参考图` }, { status: 403 });
+  }
+
+  if (quantity > maxQuantity) {
+    return NextResponse.json({ error: `当前套餐最多一次生成 ${maxQuantity} 张图片` }, { status: 403 });
+  }
 
   let usingFreeTrial = false;
-  if (!user.freeTrialUsed) {
+  if (!user.freeTrialUsed && tier === "free") {
+    if (sizeLabel !== FREE_TRIAL_SIZE || referenceImages.length > 0 || quantity > 1) {
+      return NextResponse.json({ error: "免费试用仅支持生成 1 张 1K 图片，不能上传参考图" }, { status: 403 });
+    }
     usingFreeTrial = true;
   } else {
+    const totalCost = cost * quantity;
     const balance = await getCreditBalance(user.id);
-    if (balance < cost) {
-      return NextResponse.json({ error: "积分不足，请先购买 9.9 元月卡" }, { status: 402 });
+    if (balance < totalCost) {
+      return NextResponse.json({ error: "积分不足，请先购买会员或随买随用积分" }, { status: 402 });
     }
   }
+
+  const chargedCredits = usingFreeTrial ? 0 : cost * quantity;
 
   const generation = await prisma.generation.create({
     data: {
@@ -61,7 +85,8 @@ export async function POST(request: Request) {
       sizeLabel,
       width: size.width,
       height: size.height,
-      creditsCharged: usingFreeTrial ? 0 : cost,
+      creditsCharged: chargedCredits,
+      quantity,
       status: GenerationStatus.PENDING
     }
   });
@@ -80,28 +105,33 @@ export async function POST(request: Request) {
       })
     ]);
   } else {
-    await debitCredits(user.id, generation.id, cost);
+    await debitCredits(user.id, generation.id, chargedCredits);
   }
 
   try {
     const settings = await getImageProviderSettings();
-    const result = await runWithGenerationLimit(settings.maxConcurrentGenerations, () =>
-      generateImage({ prompt, scenario, mode, sizeLabel, referenceImages })
-    );
+    const results = [];
+    for (let index = 0; index < quantity; index += 1) {
+      const result = await runWithGenerationLimit(settings.maxConcurrentGenerations, () =>
+        generateImage({ prompt, scenario, mode, sizeLabel, referenceImages })
+      );
+      results.push(result);
+    }
+    const primary = results[0];
     const updated = await prisma.generation.update({
       where: { id: generation.id },
       data: {
         status: GenerationStatus.SUCCEEDED,
-      imageUrl: result.imageUrl,
-      originalUrl: result.originalUrl,
-      referenceImages: referenceImages.length ? JSON.stringify(referenceImages) : null
+        imageUrl: primary.imageUrl,
+        originalUrl: primary.originalUrl,
+        referenceImages: referenceImages.length ? JSON.stringify(referenceImages) : null
       }
     });
 
-    return NextResponse.json({ generation: updated });
+    return NextResponse.json({ generation: updated, outputs: results });
   } catch (error) {
     if (!usingFreeTrial) {
-      await refundCredits(user.id, generation.id, cost);
+      await refundCredits(user.id, generation.id, chargedCredits);
     }
 
     const message = normalizeGenerationError(error);

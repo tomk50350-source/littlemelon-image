@@ -1,6 +1,6 @@
 import { PaymentStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { addMonthlyCredits } from "@/lib/credits";
+import { addPaidCredits } from "@/lib/credits";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
@@ -20,7 +20,7 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
         providerTradeNo: `mock-${Date.now()}`
       }
     });
-    await addMonthlyCredits(payment.userId, payment.id);
+    await addPaidCredits(payment.userId, payment.id, payment.planId);
   }
 
   return NextResponse.redirect(new URL("/pricing?paid=1", process.env.NEXTAUTH_URL || "http://localhost:3000"));
