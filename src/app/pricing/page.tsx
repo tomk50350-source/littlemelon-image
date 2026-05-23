@@ -39,7 +39,7 @@ export default function PricingPage() {
               <p>一次提示词最多生成 2 张</p>
               <p>参考图：最多 3 张</p>
               <p>更适合批量电商图和修图</p>
-              <PricingActions defaultPlanId="pro-9900" compact />
+              <PricingActions defaultPlanId="pro-9900" />
             </article>
             <article className="card pricing-card">
               <h2>随买随用</h2>
@@ -48,12 +48,9 @@ export default function PricingPage() {
               <p>1K：¥0.5 / 张</p>
               <p>2K：¥1 / 张</p>
               <p>4K：¥2 / 张</p>
-              <PricingActions defaultPlanId="payg-1k-50" compact allowPayg />
+              <PricingActions defaultPlanId="payg-1k-50" allowPayg />
             </article>
           </div>
-          <p className="notice" style={{ marginTop: 18 }}>
-            当前支持微信/支付宝收款码和管理员确认到账。支付宝官方自动回调可以接入，必须先准备支付宝开放平台应用、HTTPS 域名、应用私钥和支付宝公钥。
-          </p>
         </div>
       </main>
     </div>

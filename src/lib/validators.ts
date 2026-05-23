@@ -11,7 +11,7 @@ export const generationSchema = z.object({
   scenario: z.enum(["ecommerce", "retouch", "patent", "creative"]),
   mode: z.enum(["text", "reference", "edit"]),
   sizeLabel: z.enum(["1K", "2K", "4K"]),
-  quantity: z.number().int().min(1).max(2).default(1),
+  quantity: z.number().int().min(1).max(3).default(1),
   referenceImages: z
     .array(z.string().startsWith("data:image/", "请上传图片文件"))
     .max(3, "最多上传 3 张参考图")

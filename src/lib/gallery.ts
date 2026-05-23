@@ -1,3 +1,4 @@
+import type { PromptGallery } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export const GALLERY_PAGE_SIZE = 60;
@@ -30,22 +31,23 @@ export async function getRotatingGalleryItems({
     const items = await prisma.promptGallery.findMany({
       where,
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-      take
+      take: getDedupeTake(take, total)
     });
-    return { items, total };
+    return { items: dedupeGalleryItems(items).slice(0, take), total };
   }
 
   if (order === "popular") {
     const items = await prisma.promptGallery.findMany({
       where,
       orderBy: [{ popularity: "desc" }, { repoStars: "desc" }, { updatedAt: "desc" }],
-      take
+      take: getDedupeTake(take, total)
     });
-    return { items, total };
+    return { items: dedupeGalleryItems(items).slice(0, take), total };
   }
 
   const offset = Math.abs(Math.floor(seed)) % total;
-  const firstTake = Math.min(take, total - offset);
+  const requestedTake = getDedupeTake(take, total);
+  const firstTake = Math.min(requestedTake, total - offset);
   const [firstBatch, secondBatch] = await Promise.all([
     prisma.promptGallery.findMany({
       where,
@@ -53,17 +55,17 @@ export async function getRotatingGalleryItems({
       skip: offset,
       take: firstTake
     }),
-    firstTake < take
+    firstTake < requestedTake
       ? prisma.promptGallery.findMany({
           where,
           orderBy: [{ id: "asc" }],
           skip: 0,
-          take: Math.min(take - firstTake, offset)
+          take: Math.min(requestedTake - firstTake, offset)
         })
       : Promise.resolve([])
   ]);
 
-  return { items: [...firstBatch, ...secondBatch], total };
+  return { items: dedupeGalleryItems([...firstBatch, ...secondBatch]).slice(0, take), total };
 }
 
 export function gallerySeedFromRequest(request: Request) {
@@ -71,4 +73,38 @@ export function gallerySeedFromRequest(request: Request) {
   const rawSeed = searchParams.get("seed");
   if (rawSeed) return Number(rawSeed);
   return Date.now();
+}
+
+function getDedupeTake(take: number, total: number) {
+  return Math.min(Math.max(take * 4, take + 80), total);
+}
+
+function dedupeGalleryItems(items: PromptGallery[]) {
+  const seen = new Set<string>();
+  const deduped: PromptGallery[] = [];
+
+  for (const item of items) {
+    const keys = [dedupeKey(item.coverUrl), dedupeKey(item.title), promptSignature(item.prompt)];
+    if (keys.some((key) => key && seen.has(key))) continue;
+    keys.forEach((key) => {
+      if (key) seen.add(key);
+    });
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
+function dedupeKey(value: string | null | undefined) {
+  if (!value) return "";
+  return value
+    .toLowerCase()
+    .replace(/\?.*$/, "")
+    .replace(/[_\-\s]+/g, "")
+    .trim();
+}
+
+function promptSignature(prompt: string | null | undefined) {
+  if (!prompt) return "";
+  return dedupeKey(prompt).slice(0, 180);
 }

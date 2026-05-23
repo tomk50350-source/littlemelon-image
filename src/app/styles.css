@@ -468,11 +468,17 @@ a {
   background: #f8fbff;
 }
 
-.inline-upload {
+.prompt-toolbar {
   position: absolute;
   top: 14px;
-  left: 14px;
+  right: 14px;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.inline-upload {
   display: grid;
   width: 52px;
   height: 52px;
@@ -493,7 +499,7 @@ a {
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 82px 18px 44px;
+  padding: 18px 86px 44px 18px;
 }
 
 .prompt-textarea:focus {
@@ -720,7 +726,7 @@ a {
 }
 
 .quantity-segmented {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .segment {
@@ -1186,7 +1192,13 @@ a {
   font-weight: 800;
 }
 
+.prompt-box button.copied {
+  color: #0f766e;
+}
+
 .prompt-box p {
+  max-height: min(360px, 42vh);
+  overflow: auto;
   color: #29342e;
   font-size: 14px;
   line-height: 1.75;
@@ -1667,5 +1679,14 @@ a {
   .prompt-shell,
   .prompt-textarea {
     min-height: 300px;
+  }
+
+  .prompt-toolbar {
+    top: 12px;
+    right: 12px;
+  }
+
+  .prompt-textarea {
+    padding-right: 78px;
   }
 }

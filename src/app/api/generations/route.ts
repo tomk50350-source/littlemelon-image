@@ -1,4 +1,4 @@
-import { CreditSource, GenerationStatus } from "@prisma/client";
+import { CreditSource, GenerationStatus, UserRole } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
@@ -49,8 +49,9 @@ export async function POST(request: Request) {
   const size = IMAGE_SIZES[sizeLabel];
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
   const tier = await getUserTier(user.id);
-  const maxReferenceImages = getTierReferenceLimit(tier);
-  const maxQuantity = getTierMaxQuantity(tier);
+  const isSuperAdmin = user.role === UserRole.SUPER_ADMIN;
+  const maxReferenceImages = isSuperAdmin ? 3 : getTierReferenceLimit(tier);
+  const maxQuantity = isSuperAdmin ? 3 : getTierMaxQuantity(tier);
 
   if (referenceImages.length > maxReferenceImages) {
     return NextResponse.json({ error: `当前套餐最多上传 ${maxReferenceImages} 张参考图` }, { status: 403 });

@@ -24,7 +24,6 @@ const planOptions = [
 
 export function PricingActions({
   defaultPlanId = "plus-990",
-  compact = false,
   allowPayg = false
 }: {
   defaultPlanId?: string;
@@ -83,15 +82,7 @@ export function PricingActions({
             </option>
           ))}
         </select>
-      ) : compact ? null : (
-        <select className="select" value={planId} onChange={(event) => setPlanId(event.target.value)}>
-          {planOptions.slice(0, 2).map((plan) => (
-            <option value={plan.id} key={plan.id}>
-              {plan.label}
-            </option>
-          ))}
-        </select>
-      )}
+      ) : null}
       <button className="button button-primary" onClick={() => buy("wechat")} disabled={loading}>
         {loading ? <Loader2 size={16} /> : <CreditCard size={16} />}
         微信支付

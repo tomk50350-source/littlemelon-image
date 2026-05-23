@@ -55,6 +55,10 @@ export function Generator() {
     refreshMe().catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    if (quantity > maxQuantity) setQuantity(maxQuantity);
+  }, [maxQuantity, quantity]);
+
   async function submit() {
     setLoading(true);
     setMessage("");
@@ -84,12 +88,12 @@ export function Generator() {
     if (!files?.length) return;
     setMessage("");
     if (maxReferenceImages <= 0) {
-      setMessage("Free 只能文生图；升级 Plus 后可上传 2 张参考图，Pro/随买随用可上传 3 张。");
+      setMessage("当前账户暂不支持上传参考图，请在价格页查看套餐权限。");
       return;
     }
     const selected = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (referenceImages.length + selected.length > maxReferenceImages) {
-      setMessage(`当前套餐最多上传 ${maxReferenceImages} 张参考图`);
+      setMessage("上传数量超过当前账户权限，请在价格页查看套餐权限。");
       return;
     }
     const encoded = await Promise.all(selected.map(readImageFile));
@@ -113,27 +117,26 @@ export function Generator() {
 
         <div className="field prompt-field">
           <div className="prompt-shell">
-            <label className="inline-upload" title={maxReferenceImages > 0 ? "上传参考图" : "当前套餐不支持参考图"}>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(event) => {
-                  handleFiles(event.target.files);
-                  event.currentTarget.value = "";
-                }}
-              />
-              <Plus size={22} />
-            </label>
+            <div className="prompt-toolbar">
+              <label className="inline-upload" title={maxReferenceImages > 0 ? "上传参考图" : "当前套餐不支持参考图"}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(event) => {
+                    handleFiles(event.target.files);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <Plus size={22} />
+              </label>
+            </div>
             <textarea
               className="textarea prompt-textarea"
               placeholder="输入你想生成的画面..."
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
             />
-            <span className="reference-count">
-              {referenceImages.length}/{maxReferenceImages} 参考图
-            </span>
           </div>
           {referenceImages.length ? (
             <div className="upload-grid compact-upload-grid">
@@ -194,13 +197,13 @@ export function Generator() {
         <div className="control-row">
           <div className="field">
             <div className="segmented quantity-segmented">
-              {[1, 2].map((value) => (
+              {[1, 2, 3].map((value) => (
                 <button
                   className={`segment ${quantity === value ? "active" : ""}`}
                   key={value}
                   onClick={() => {
                     if (value > maxQuantity) {
-                      setMessage("Plus / Pro 支持一次提示词生成 2 张；Free 和随买随用默认 1 张。");
+                      setMessage(`当前账户一次最多生成 ${maxQuantity} 张图片。`);
                       return;
                     }
                     setQuantity(value);
@@ -210,9 +213,6 @@ export function Generator() {
                 </button>
               ))}
             </div>
-          </div>
-          <div className="field">
-            <div className="quota-box">最多 {maxReferenceImages} 张参考图</div>
           </div>
         </div>
 

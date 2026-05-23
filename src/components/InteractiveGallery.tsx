@@ -41,6 +41,7 @@ export function InteractiveGallery({
   const [sort, setSort] = useState<"latest" | "popular">("latest");
   const [language, setLanguage] = useState<"zh" | "en">("zh");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [copiedPromptId, setCopiedPromptId] = useState("");
   const [gateMessage, setGateMessage] = useState("");
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -57,8 +58,15 @@ export function InteractiveGallery({
       .catch(() => undefined);
   }, []);
 
-  async function copyPrompt(prompt: string) {
-    await navigator.clipboard?.writeText(prompt);
+  async function copyPrompt(item: GalleryItem) {
+    const text = cleanPrompt(item.prompt);
+    try {
+      await navigator.clipboard?.writeText(text);
+    } catch {
+      fallbackCopy(text);
+    }
+    setCopiedPromptId(item.id);
+    window.setTimeout(() => setCopiedPromptId((current) => (current === item.id ? "" : current)), 1600);
   }
 
   async function reload(nextSort = sort) {
@@ -157,11 +165,10 @@ export function InteractiveGallery({
               <img className="thumb" src={item.coverUrl} alt={item.title} />
               <div className="gallery-card-body">
                 <div className="tag-row">
-                  <span className="tag">{item.model}</span>
                   <span className="tag">{item.sizeLabel}</span>
                 </div>
-                <h3>{language === "zh" ? item.title : item.title}</h3>
-                {sort === "popular" ? <p className="gallery-heat">GitHub heat {item.repoStars ?? 0}</p> : null}
+                <h3>{formatGalleryTitle(item, language)}</h3>
+                {sort === "popular" ? <p className="gallery-heat">{item.repoStars ?? 0} 热度</p> : null}
               </div>
             </button>
             <button className={`favorite-button ${favorites.has(item.id) ? "active" : ""}`} aria-label="收藏" onClick={() => toggleFavorite(item)}>
@@ -200,20 +207,18 @@ export function InteractiveGallery({
             </div>
             <div className="dialog-content">
               <div className="tag-row">
-                <span className="tag">{selected.model}</span>
                 <span className="tag">{selected.sizeLabel}</span>
-                <span className="tag">GitHub heat {selected.repoStars ?? 0}</span>
               </div>
-              <h2>{selected.title}</h2>
+              <h2>{formatGalleryTitle(selected, language)}</h2>
               <div className="prompt-box">
                 <div>
-                  <strong>Prompt</strong>
-                  <button onClick={() => copyPrompt(selected.prompt)}>
+                  <strong>提示词</strong>
+                  <button className={copiedPromptId === selected.id ? "copied" : ""} onClick={() => copyPrompt(selected)}>
                     <Copy size={14} />
-                    复制
+                    {copiedPromptId === selected.id ? "已复制" : "复制"}
                   </button>
                 </div>
-                <p>{selected.prompt}</p>
+                <p>{cleanPrompt(selected.prompt)}</p>
               </div>
               <div className="dialog-actions">
                 <a className="button button-primary" href="/#generator">
@@ -237,4 +242,112 @@ export function InteractiveGallery({
       ) : null}
     </>
   );
+}
+
+function formatGalleryTitle(item: GalleryItem, language: "zh" | "en") {
+  const cleaned = cleanTitle(item.title);
+  const title = language === "zh" ? titleToChinese(cleaned) : cleaned;
+  return appendSize(title, item.sizeLabel);
+}
+
+function cleanTitle(title: string) {
+  return title
+    .replace(/nano\s*banana(?:\s*(?:2|pro))?/gi, "")
+    .replace(/gpt[-\s_]*image[-\s_]*2/gi, "")
+    .replace(/image\s*2/gi, "")
+    .replace(/\bpro\s*examples?\b/gi, "案例")
+    .replace(/^youtube\s*thumbnail\s*[-:]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s:：\-]+|[\s:：\-]+$/g, "")
+    .trim();
+}
+
+function titleToChinese(title: string) {
+  const normalized = title.toLowerCase();
+  const dictionary: Array<[RegExp, string]> = [
+    [/merchandise.*design/, "周边商品设计"],
+    [/retro.*japanese.*town.*pixel.*rpg/, "复古日式像素 RPG 小镇"],
+    [/cyberpunk.*europe.*action.*hud/, "赛博朋克欧洲动作游戏界面"],
+    [/anime.*open.*world.*adventure.*hud/, "动漫开放世界冒险界面"],
+    [/low.*poly.*samurai.*strategy.*village/, "低多边形武士策略村落"],
+    [/iclr.*method.*figure/, "论文方法示意图"],
+    [/vhs.*grocery.*store.*chaos/, "VHS 超市混乱电影帧"],
+    [/ground.*view.*map.*arrow/, "地图箭头生成地面视角"],
+    [/real.*world.*ar.*information/, "真实世界 AR 信息图"],
+    [/extract.*3d.*buildings|isometric.*models/, "等距 3D 建筑模型"],
+    [/concept.*sheet/, "概念设定图"],
+    [/camera.*parameter/, "相机参数示意图"],
+    [/epic.*silhouette.*worldbuilding.*poster/, "史诗级剪影世界观海报"],
+    [/stone.*staircase.*evolution.*infographic/, "3D 石阶演化信息图"],
+    [/uiux|ui\/ux|mockup/, "界面设计灵感图"],
+    [/product.*poster|ecommerce|commerce/, "电商产品海报"],
+    [/character|portrait/, "角色肖像设计"],
+    [/poster/, "创意海报"],
+    [/infographic/, "信息图设计"],
+    [/logo/, "品牌标志设计"],
+    [/thumbnail/, "视频封面设计"],
+    [/line.*art|lineart|patent/, "线条结构图"],
+    [/realistic|photo|photography/, "写实摄影图"],
+    [/illustration/, "插画设计"]
+  ];
+  const found = dictionary.find(([pattern]) => pattern.test(normalized));
+  if (found) return found[1];
+  if (!/[a-z]/i.test(title)) return title || "创意图片";
+  const translated = title
+    .replace(/\bmerchandise\b/gi, "周边商品")
+    .replace(/\bdesign\b/gi, "设计")
+    .replace(/\bretro\b/gi, "复古")
+    .replace(/\bjapanese\b/gi, "日式")
+    .replace(/\btown\b/gi, "小镇")
+    .replace(/\bpixel\b/gi, "像素")
+    .replace(/\bcyberpunk\b/gi, "赛博朋克")
+    .replace(/\beurope\b/gi, "欧洲")
+    .replace(/\baction\b/gi, "动作")
+    .replace(/\bhud\b/gi, "界面")
+    .replace(/\banime\b/gi, "动漫")
+    .replace(/\bopen[- ]world\b/gi, "开放世界")
+    .replace(/\badventure\b/gi, "冒险")
+    .replace(/\blow[- ]poly\b/gi, "低多边形")
+    .replace(/\bsamurai\b/gi, "武士")
+    .replace(/\bstrategy\b/gi, "策略")
+    .replace(/\bvillage\b/gi, "村落")
+    .replace(/\bmethod\b/gi, "方法")
+    .replace(/\bfigure\b/gi, "示意图")
+    .replace(/\bepic\b/gi, "史诗级")
+    .replace(/\bsilhouette\b/gi, "剪影")
+    .replace(/\bworldbuilding\b/gi, "世界观")
+    .replace(/\bposter\b/gi, "海报")
+    .replace(/\binfographic\b/gi, "信息图")
+    .replace(/\bproduct\b/gi, "产品")
+    .replace(/\bphotography\b|\bphoto\b/gi, "摄影")
+    .replace(/\billustration\b/gi, "插画")
+    .replace(/\bmockup\b/gi, "样机")
+    .trim();
+  return /[a-z]/i.test(translated) ? "创意图片" : translated || "创意图片";
+}
+
+function appendSize(title: string, sizeLabel: string) {
+  const clean = title.replace(/[，,]\s*(1K|2K|4K)$/i, "").trim();
+  return `${clean || "创意图片"}，${sizeLabel}`;
+}
+
+function cleanPrompt(prompt: string) {
+  return prompt
+    .replace(/nano\s*banana(?:\s*(?:2|pro))?/gi, "图片模型")
+    .replace(/gpt[-\s_]*image[-\s_]*2/gi, "图片模型")
+    .replace(/\bimage\s*2\b/gi, "图片模型")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function fallbackCopy(text: string) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
 }
