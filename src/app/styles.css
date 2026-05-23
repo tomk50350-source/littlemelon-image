@@ -1484,6 +1484,63 @@ a {
   gap: 10px;
 }
 
+.admin-user-create,
+.admin-user-row {
+  display: grid;
+  gap: 10px;
+  align-items: center;
+}
+
+.admin-user-create {
+  grid-template-columns: minmax(180px, 1.2fr) minmax(140px, 0.9fr) minmax(180px, 1fr) 130px 110px 120px auto;
+  margin-bottom: 14px;
+}
+
+.admin-user-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin-user-row {
+  grid-template-columns: minmax(220px, 1fr) 130px 100px 120px 120px minmax(140px, 0.7fr) auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
+}
+
+.admin-user-main {
+  min-width: 0;
+}
+
+.admin-user-main strong,
+.admin-user-main span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-user-main span {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.checkbox-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.compact-checkbox {
+  justify-content: center;
+}
+
 .admin-table-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px 120px;
@@ -1634,6 +1691,8 @@ a {
   .control-row,
   .qr-settings-grid,
   .payment-row,
+  .admin-user-create,
+  .admin-user-row,
   .admin-table-row,
   .quick-rail,
   .value-grid,
@@ -1666,6 +1725,10 @@ a {
 
   .payment-action {
     justify-items: start;
+  }
+
+  .compact-checkbox {
+    justify-content: start;
   }
 
   .gallery-modal {

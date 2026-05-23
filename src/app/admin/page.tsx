@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { getAdminSettings } from "@/lib/settings";
 import { PaymentConfirmButton } from "./payment-confirm-button";
 import { SettingsForm } from "./settings-form";
+import { UserManagement } from "./user-management";
 
 export default async function AdminPage() {
   const admin = await requireSuperAdmin();
-  const [users, payments, generations, prompts, settings, recentPayments, recentUsers, recentGenerations, recentPrompts] = await Promise.all([
+  const [users, payments, generations, prompts, settings, recentPayments, managedUsers, creditRows, recentGenerations, recentPrompts] = await Promise.all([
     prisma.user.count(),
     prisma.payment.count(),
     prisma.generation.count(),
@@ -24,8 +25,15 @@ export default async function AdminPage() {
     }),
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
-      take: 6,
+      take: 50,
       select: { id: true, email: true, name: true, role: true, createdAt: true, emailVerified: true }
+    }),
+    prisma.creditLedger.groupBy({
+      by: ["userId"],
+      where: {
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
+      },
+      _sum: { amount: true }
     }),
     prisma.generation.findMany({
       orderBy: { createdAt: "desc" },
@@ -38,6 +46,11 @@ export default async function AdminPage() {
       select: { id: true, title: true, category: true, model: true, updatedAt: true }
     })
   ]);
+  const balanceByUser = new Map(creditRows.map((row) => [row.userId, Number(row._sum.amount || 0)]));
+  const usersWithBalance = managedUsers.map((user) => ({
+    ...user,
+    balance: balanceByUser.get(user.id) || 0
+  }));
 
   return (
     <div className="app-shell">
@@ -96,26 +109,7 @@ export default async function AdminPage() {
                   hasAlipayPrivateKey: settings.hasAlipayPrivateKey
                 }}
               />
-              <section className="panel admin-section" id="admin-users">
-                <div className="section-title compact">
-                  <div>
-                    <h2>用户管理</h2>
-                    <p className="muted">最近注册用户和邮箱验证状态。</p>
-                  </div>
-                </div>
-                <div className="admin-table">
-                  {recentUsers.map((user) => (
-                    <div className="admin-table-row" key={user.id}>
-                      <div>
-                        <strong>{user.email}</strong>
-                        <span>{user.name || "未填写昵称"}</span>
-                      </div>
-                      <span>{user.role}</span>
-                      <span>{user.emailVerified ? "已验证" : "未验证"}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
+              <UserManagement users={usersWithBalance} />
               <section className="panel admin-section" id="admin-payments">
                 <div className="section-title compact">
                   <div>
