@@ -22,6 +22,24 @@ const SOURCES = [
     priority: true
   },
   {
+    id: "zerolu",
+    label: "ZeroLu awesome-gpt-image",
+    repo: "ZeroLu/awesome-gpt-image",
+    branch: "main",
+    model: "GPT-Image-2",
+    files: ["README.md"],
+    priority: true
+  },
+  {
+    id: "anil-matcha",
+    label: "Anil-matcha Awesome-GPT-Image-2-API-Prompts",
+    repo: "Anil-matcha/Awesome-GPT-Image-2-API-Prompts",
+    branch: "main",
+    model: "GPT-Image-2",
+    files: ["README.md"],
+    priority: true
+  },
+  {
     id: "picotrex",
     label: "PicoTrex Awesome-Nano-Banana-images",
     repo: "PicoTrex/Awesome-Nano-Banana-images",
@@ -53,9 +71,9 @@ const SEARCH_QUERIES = [
 const USER_AGENT = "LittleMelon-Image-Gallery-Sync";
 const MAX_DISCOVERED_SOURCES = 4;
 const MAX_TOTAL_ITEMS = 2000;
-const REQUEST_RETRIES = 2;
-const REQUEST_TIMEOUT_MS = 11000;
-const DEFAULT_LIMIT_PER_SOURCE = 120;
+const REQUEST_RETRIES = 1;
+const REQUEST_TIMEOUT_MS = 7000;
+const DEFAULT_LIMIT_PER_SOURCE = 90;
 const MIN_PROMPT_LENGTH = 10;
 
 export async function syncGitHubGallery({ limitPerSource = DEFAULT_LIMIT_PER_SOURCE, discoverGitHub = false } = {}) {
@@ -99,14 +117,22 @@ export async function syncGitHubGallery({ limitPerSource = DEFAULT_LIMIT_PER_SOU
     });
   }
 
+  const syncedAt = new Date();
+  const batchSize = 80;
   let synced = 0;
-  for (const item of unique) {
-    await prisma.promptGallery.upsert({
-      where: { id: item.id },
-      update: { ...item, featured: false, updatedAt: new Date() },
-      create: { ...item, featured: false, updatedAt: new Date() }
-    });
-    synced += 1;
+  for (let index = 0; index < unique.length; index += batchSize) {
+    const batch = unique.slice(index, index + batchSize);
+    await prisma.$transaction(
+      batch.map((item) =>
+        prisma.promptGallery.upsert({
+          where: { id: item.id },
+          update: { ...item, featured: false, updatedAt: syncedAt },
+          create: { ...item, featured: false, updatedAt: syncedAt }
+        })
+      ),
+      { timeout: 20000 }
+    );
+    synced += batch.length;
   }
 
   return {

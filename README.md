@@ -15,7 +15,7 @@ LittleMelon Image 是一个中文 AI 生图网站 MVP，重点服务电商产品
 - 生成前预扣积分，失败自动退回。
 - 最近 5 张历史和原图下载。
 - 创意案例无限加载、最新/热度排序、中英文切换入口、会员收藏最多 100 张。
-- GitHub 创意案例同步：固定同步 YouMind、EvoLinkAI、PicoTrex、wuyoscar，并可发现更多 GPT-Image-2 / image2 仓库。
+- GitHub 创意案例同步：固定同步 YouMind、ZeroLu、Anil-matcha、EvoLinkAI、PicoTrex、wuyoscar，并可发现更多 GPT-Image-2 / image2 仓库。
 - 后台支持上传微信/支付宝收款码，管理员确认到账后自动发放对应积分。
 - 支付宝异步通知入口：`/api/payments/alipay-notify`，配置 App ID 和支付宝公钥后可自动验签发积分。
 
