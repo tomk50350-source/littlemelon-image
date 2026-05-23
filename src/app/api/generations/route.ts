@@ -13,6 +13,8 @@ import {
 } from "@/lib/credits";
 import { ImageProviderError, generateImage } from "@/lib/openai-image";
 import { prisma } from "@/lib/prisma";
+import { runBatchWithGenerationLimit } from "@/lib/generation-queue";
+import { getImageProviderSettings } from "@/lib/settings";
 import { generationSchema } from "@/lib/validators";
 
 export async function GET() {
@@ -108,11 +110,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const results = [];
-    for (let index = 0; index < quantity; index += 1) {
-      const result = await generateImage({ prompt, scenario, mode, sizeLabel, referenceImages });
-      results.push(result);
-    }
+    const settings = await getImageProviderSettings();
+    const results = await runBatchWithGenerationLimit(
+      settings.maxConcurrentGenerations,
+      Array.from({ length: quantity }, () => () => generateImage({ prompt, scenario, mode, sizeLabel, referenceImages }))
+    );
     const primary = results[0];
     const updated = await prisma.generation.update({
       where: { id: generation.id },

@@ -25,7 +25,7 @@ const defaults: ImageProviderSettings = {
   apiKey: process.env.OPENAI_API_KEY,
   baseUrl: process.env.OPENAI_BASE_URL,
   model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-2",
-  maxConcurrentGenerations: Number(process.env.MAX_CONCURRENT_GENERATIONS || 2)
+  maxConcurrentGenerations: Number(process.env.MAX_CONCURRENT_GENERATIONS || 3)
 };
 
 export async function getImageProviderSettings(): Promise<ImageProviderSettings> {
@@ -42,7 +42,7 @@ export async function getImageProviderSettings(): Promise<ImageProviderSettings>
     apiKey: values.openaiApiKey || defaults.apiKey,
     baseUrl: values.openaiBaseUrl || defaults.baseUrl,
     model: values.openaiImageModel || defaults.model,
-    maxConcurrentGenerations: Math.max(1, Number(values.maxConcurrentGenerations || defaults.maxConcurrentGenerations || 2))
+    maxConcurrentGenerations: Math.max(1, Number(values.maxConcurrentGenerations || defaults.maxConcurrentGenerations || 3))
   };
 }
 
@@ -75,7 +75,7 @@ export async function saveImageProviderSettings(input: {
   const entries = [
     ["openaiBaseUrl", input.baseUrl?.trim()],
     ["openaiImageModel", input.model?.trim()],
-    ["maxConcurrentGenerations", String(input.maxConcurrentGenerations || 2)]
+    ["maxConcurrentGenerations", String(input.maxConcurrentGenerations || 3)]
   ] as const;
 
   if (input.apiKey?.trim()) {

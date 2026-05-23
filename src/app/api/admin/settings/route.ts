@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     apiKey: body.apiKey,
     baseUrl: body.baseUrl,
     model: body.model,
-    maxConcurrentGenerations: Number(body.maxConcurrentGenerations || 2),
+    maxConcurrentGenerations: Number(body.maxConcurrentGenerations || 3),
     emailProvider: body.emailProvider,
     smtpHost: body.smtpHost,
     smtpPort: Number(body.smtpPort || 465),

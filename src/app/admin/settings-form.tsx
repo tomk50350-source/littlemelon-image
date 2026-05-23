@@ -110,6 +110,7 @@ export function SettingsForm({ initial }: SettingsFormProps) {
           value={maxConcurrentGenerations}
           onChange={(event) => setMaxConcurrentGenerations(event.target.value)}
         />
+        <p className="muted">要一次并发生成 3 张，这里填 3。2 核 2G VPS 建议不要超过 3。</p>
       </div>
 
       <div className="settings-divider" />
