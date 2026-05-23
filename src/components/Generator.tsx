@@ -61,7 +61,7 @@ export function Generator() {
 
   async function submit() {
     setLoading(true);
-    setMessage("");
+    setMessage("已提交生成任务。如果当前使用人数较多，系统会自动排队处理。");
 
     try {
       const response = await fetch("/api/generations", {
@@ -76,6 +76,7 @@ export function Generator() {
         return;
       }
 
+      setMessage("");
       setResult(data.generation);
       setOutputs(data.outputs ?? (data.generation?.imageUrl ? [{ imageUrl: data.generation.imageUrl, originalUrl: data.generation.originalUrl ?? data.generation.imageUrl }] : []));
       await refreshMe();

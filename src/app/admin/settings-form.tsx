@@ -110,7 +110,7 @@ export function SettingsForm({ initial }: SettingsFormProps) {
           value={maxConcurrentGenerations}
           onChange={(event) => setMaxConcurrentGenerations(event.target.value)}
         />
-        <p className="muted">要一次并发生成 3 张，这里填 3。2 核 2G VPS 建议不要超过 3。</p>
+        <p className="muted">这是同时跑的图片请求数，不是同时在线用户数。超出后会自动排队。2 核 2G VPS 建议先用 3，稳定后可逐步调到 4-6 观察。</p>
       </div>
 
       <div className="settings-divider" />
