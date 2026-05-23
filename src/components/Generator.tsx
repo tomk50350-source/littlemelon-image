@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, ImagePlus, Loader2, Sparkles, Upload, Wand2, X } from "lucide-react";
+import { Download, ImagePlus, Loader2, Plus, Wand2, X } from "lucide-react";
 import { CREDIT_COSTS, SCENARIOS, type ImageSizeLabel } from "@/lib/constants";
 
 type HistoryItem = {
@@ -20,11 +20,11 @@ type GenerationResponse = {
 };
 
 export function Generator() {
-  const [scenario, setScenario] = useState("ecommerce");
+  const [scenario] = useState("creative");
   const [mode, setMode] = useState<"text" | "reference" | "edit">("text");
   const [sizeLabel, setSizeLabel] = useState<ImageSizeLabel>("1K");
   const [quantity, setQuantity] = useState(1);
-  const [prompt, setPrompt] = useState("为一款小众护肤品生成高级电商主图，浅绿色背景，真实摄影棚布光，产品居中，有柔和阴影。");
+  const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState<HistoryItem | null>(null);
   const [outputs, setOutputs] = useState<{ imageUrl: string; originalUrl: string }[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -102,37 +102,68 @@ export function Generator() {
   }
 
   return (
-    <section id="generator" className="studio-card generator generator-compact">
+    <section id="generator" className="studio-card generator generator-clean">
       <div className="generator-form">
-        <div className="section-title compact">
+        <div className="creator-heading">
           <div>
-            <h2>AI 图片工作台</h2>
-            <p className="muted">输入需求，选择尺寸，生成后可下载原图。</p>
+            <h1>LittleMelon Image</h1>
           </div>
-          <span className="tag">{tier.toUpperCase()} · {balance.toFixed(0)} 积分</span>
+          <span className="credit-pill">{tier.toUpperCase()} · {balance.toFixed(0)} 积分</span>
         </div>
 
-        <div className="scenario-grid studio-scenarios compact-scenarios">
-          {SCENARIOS.map((item) => (
-            <button
-              className={`scenario-card ${scenario === item.id ? "active" : ""}`}
-              key={item.id}
-              onClick={() => setScenario(item.id)}
-            >
-              <strong>{item.title}</strong>
-              <span>{item.description}</span>
-            </button>
-          ))}
+        <div className="field prompt-field">
+          <div className="prompt-shell">
+            <label className="inline-upload" title={maxReferenceImages > 0 ? "上传参考图" : "当前套餐不支持参考图"}>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(event) => {
+                  handleFiles(event.target.files);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <Plus size={22} />
+            </label>
+            <textarea
+              className="textarea prompt-textarea"
+              placeholder="输入你想生成的画面..."
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+            />
+            <span className="reference-count">
+              {referenceImages.length}/{maxReferenceImages} 参考图
+            </span>
+          </div>
+          {referenceImages.length ? (
+            <div className="upload-grid compact-upload-grid">
+              {referenceImages.map((image, index) => (
+                <div className="upload-preview" key={`${image.slice(0, 24)}-${index}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image} alt={`参考图 ${index + 1}`} />
+                  <button type="button" aria-label="移除参考图" onClick={() => removeReferenceImage(index)}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="tag-row preset-row">
+            {activeScenario.presets.map((preset) => (
+              <button className="tag" key={preset} onClick={() => setPrompt(`${preset}：${prompt}`)}>
+                {preset}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="control-row">
           <div className="field">
-          <label>任务类型</label>
           <div className="segmented">
             {[
-              ["text", "文生图"],
-              ["reference", "参考图生图"],
-              ["edit", "AI 修图"]
+              ["text", "文本"],
+              ["reference", "参考"],
+              ["edit", "编辑"]
             ].map(([value, label]) => (
               <button
                 className={`segment ${mode === value ? "active" : ""}`}
@@ -146,7 +177,6 @@ export function Generator() {
           </div>
 
           <div className="field">
-          <label>图片尺寸</label>
           <div className="segmented">
             {(Object.keys(CREDIT_COSTS) as ImageSizeLabel[]).map((size) => (
               <button
@@ -163,7 +193,6 @@ export function Generator() {
 
         <div className="control-row">
           <div className="field">
-            <label>生成数量</label>
             <div className="segmented quantity-segmented">
               {[1, 2].map((value) => (
                 <button
@@ -183,58 +212,16 @@ export function Generator() {
             </div>
           </div>
           <div className="field">
-            <label>参考图权限</label>
             <div className="quota-box">最多 {maxReferenceImages} 张参考图</div>
           </div>
         </div>
 
-        <div className="field">
-          <label>{activeScenario.title}提示词</label>
-          <textarea className="textarea" value={prompt} onChange={(event) => setPrompt(event.target.value)} />
-          <div className="tag-row">
-            {activeScenario.presets.map((preset) => (
-              <button className="tag" key={preset} onClick={() => setPrompt(`${preset}：${prompt}`)}>
-                {preset}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="field">
-          <label>参考图片</label>
-          <label className="upload-box">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(event) => {
-                handleFiles(event.target.files);
-                event.currentTarget.value = "";
-              }}
-            />
-            <Upload size={18} />
-            <span>{maxReferenceImages > 0 ? `上传产品、人物、风格或需要修图的参考图，最多 ${maxReferenceImages} 张` : "Free 不支持参考图上传"}</span>
-          </label>
-          {referenceImages.length ? (
-            <div className="upload-grid">
-              {referenceImages.map((image, index) => (
-                <div className="upload-preview" key={`${image.slice(0, 24)}-${index}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image} alt={`参考图 ${index + 1}`} />
-                  <button type="button" aria-label="移除参考图" onClick={() => removeReferenceImage(index)}>
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
         {message ? <p className="notice">{message}</p> : null}
 
-        <button className="button button-primary generate-button" disabled={loading} onClick={submit}>
+        <button className="button button-primary generate-button clean-generate-button" disabled={loading} onClick={submit}>
           {loading ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
-          {loading ? "生成中" : `立即生成 · ${CREDIT_COSTS[sizeLabel] * quantity} 积分`}
+          {loading ? "创作中" : "立即开始创作"}
+          <span>{CREDIT_COSTS[sizeLabel] * quantity} 积分</span>
         </button>
       </div>
 
@@ -242,7 +229,6 @@ export function Generator() {
         <div className="section-title compact">
           <div>
             <h3>生成结果</h3>
-            <p className="muted">结果支持下载原图</p>
           </div>
           {result?.id ? (
             <a className="button button-secondary" href={`/api/download/${result.id}`} target="_blank">
@@ -264,12 +250,7 @@ export function Generator() {
               <div className="empty-icon">
                 <ImagePlus size={32} />
               </div>
-              <strong>等待生成</strong>
-              <p className="muted">生成后的图片会显示在这里</p>
-              <span>
-                <Sparkles size={14} />
-                支持电商、修图、专利线稿
-              </span>
+              <p className="muted">您的作品将在这里呈现</p>
             </div>
           )}
         </div>

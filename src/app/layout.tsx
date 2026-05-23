@@ -5,7 +5,7 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} | 小西瓜 AI 图片`,
-  description: "面向电商产品图和 AI 修图的 GPT-Image-2 生图工具。"
+  description: "LittleMelon Image 在线图片创作工具。"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
